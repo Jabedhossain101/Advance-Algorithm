@@ -59,18 +59,12 @@ BFS explores a graph **level by level** — it visits all direct neighbors of th
 **Time Complexity:** `O(V + E)`
 
 ```typescript
-function bfs(n: number, edges: number[][], start: number) {
-  const graph: number[][] = Array.from({ length: n }, () => []);
-  edges.forEach(([u, v]) => (graph[u].push(v), graph[v].push(u)));
-  const visited = new Set([start]);
-  const result = [start];
-  const queue = [start];
-  while (queue.length) {
-    const node = queue.shift()!;
-    for (const next of graph[node])
-      if (!visited.has(next)) (visited.add(next), result.push(next), queue.push(next));
-  }
-  return result;
+function bfs(n, edges, start) {
+  const g = Array.from({ length: n }, () => []), q = [start], vis = new Set(q);
+  edges.forEach(([u, v]) => (g[u].push(v), g[v].push(u)));
+  for (let i = 0; i < q.length; i++)
+    g[q[i]].forEach(v => !vis.has(v) && (vis.add(v), q.push(v)));
+  return q;
 }
 
 const [n, start] = (prompt("Vertices Start:") || "").split(" ").map(Number);
@@ -105,18 +99,11 @@ DFS explores a graph by going **as deep as possible along one path** before back
 **Time Complexity:** `O(V + E)`
 
 ```typescript
-function dfs(n: number, edges: number[][], start: number) {
-  const graph: number[][] = Array.from({ length: n }, () => []);
-  edges.forEach(([u, v]) => (graph[u].push(v), graph[v].push(u)));
-  const visited = new Set<number>();
-  const result: number[] = [];
-  const visit = (node: number) => {
-    visited.add(node);
-    result.push(node);
-    for (const next of graph[node]) if (!visited.has(next)) visit(next);
-  };
-  visit(start);
-  return result;
+function dfs(n, edges, start) {
+  const g = Array.from({ length: n }, () => []), vis = new Set(), res = [];
+  edges.forEach(([u, v]) => (g[u].push(v), g[v].push(u)));
+  const f = (u) => (vis.add(u), res.push(u), g[u].forEach(v => !vis.has(v) && f(v)));
+  return f(start), res;
 }
 
 const [n, start] = (prompt("Vertices Start:") || "").split(" ").map(Number);
@@ -153,27 +140,22 @@ Prim's Algorithm builds a **Minimum Spanning Tree (MST)** — a subset of edges 
 > ⚠️ Prim's always starts from node `0`, so node `0` must be connected to the rest of the graph, or the result will be empty.
 
 ```typescript
-function prim(n: number, edges: [number, number, number][]) {
-  const graph: [number, number][][] = Array.from({ length: n }, () => []);
-  edges.forEach(([u, v, w]) => (graph[u].push([v, w]), graph[v].push([u, w])));
-  const visited = new Set<number>([0]);
-  const mst: [number, number, number][] = [];
-  while (mst.length < n - 1) {
-    let best: [number, number, number] = [-1, -1, Infinity];
-    for (const u of visited)
-      for (const [v, w] of graph[u]) if (!visited.has(v) && w < best[2]) best = [u, v, w];
-    if (best[2] === Infinity) break;
-    visited.add(best[1]);
-    mst.push(best);
+function prim(n, edges) {
+  const vis = new Set([0]), mst = [];
+  while (vis.size < n) {
+    const e = edges.filter(([u, v]) => vis.has(u) ^ vis.has(v)).sort((a, b) => a[2] - b[2])[0];
+    if (!e) break;
+    vis.add(e[0]).add(e[1]);
+    mst.push(e);
   }
   return mst;
 }
 
-const n = Number(prompt("Vertices:") || "0");
-const edges = (prompt("Edges (u v w):") || "")
-  .split(";").map(line => line.trim()).filter(line => line.length > 0)
-  .map(line => line.split(" ").map(Number) as [number, number, number]);
-console.log("MST =", prim(n, edges));
+const n = +prompt("Vertices:");
+const edges = prompt("Edges (u v w):").split(";").map(e => e.trim().split(" ").map(Number));
+console.log("MST (Prim) =", prim(n, edges));
+
+
 ```
 
 **Input:**
@@ -206,22 +188,19 @@ Kruskal's Algorithm also builds a Minimum Spanning Tree, but with a different st
 > ✅ Unlike Prim's, Kruskal's doesn't need a fixed starting node — it works even if node `0` is isolated from the rest.
 
 ```typescript
-function kruskal(n: number, edges: [number, number, number][]) {
-  const parent = Array.from({ length: n }, (_, i) => i);
-  const find = (x: number): number => (parent[x] === x ? x : (parent[x] = find(parent[x])));
-  const mst: [number, number, number][] = [];
-  for (const [u, v, w] of [...edges].sort((a, b) => a[2] - b[2])) {
-    const ru = find(u), rv = find(v);
-    if (ru !== rv) (parent[ru] = rv), mst.push([u, v, w]);
-  }
-  return mst;
+function kruskal(n, edges) {
+  const p = Array.from({ length: n }, (_, i) => i);
+  const find = (i) => p[i] === i ? i : (p[i] = find(p[i]));
+
+  return edges.sort((a, b) => a[2] - b[2]).filter(([u, v]) => {
+    const rootU = find(u), rootV = find(v);
+    return rootU !== rootV && (p[rootU] = rootV, true);
+  });
 }
 
-const n = Number(prompt("Vertices:") || "0");
-const edges = (prompt("Edges (u v w):") || "")
-  .split(";").map(line => line.trim()).filter(line => line.length > 0)
-  .map(line => line.split(" ").map(Number) as [number, number, number]);
-console.log("MST =", kruskal(n, edges));
+const n = +prompt("Vertices:");
+const edges = prompt("Edges (u v w):").split(";").map(e => e.trim().split(" ").map(Number));
+console.log("MST (Kruskal) =", kruskal(n, edges));
 ```
 
 **Input:**
@@ -255,9 +234,8 @@ Given a chain of matrices to multiply, the **order** in which you multiply them 
 **Time Complexity:** `O(n³)`
 
 ```typescript
-function mcm(p: number[]) {
-  const n = p.length;
-  const d = Array.from({ length: n }, () => Array(n).fill(0));
+function mcm(p) {
+  const n = p.length, d = Array.from({ length: n }, () => Array(n).fill(0));
   for (let l = 2; l < n; l++)
     for (let i = 1; i < n - l + 1; i++) {
       const j = i + l - 1;
